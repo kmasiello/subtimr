@@ -5,96 +5,295 @@ source("R/helpers.R")
 
 ui <- page_fillable(
   title = "Subtimr",
-  theme = bs_theme(version = 5, primary = "#2e7d32"),
+  theme = bs_theme(
+    version = 5,
+    preset = "bootstrap",
+    primary = "#2e7d32",
+    secondary = "#558b2f",
+    success = "#66bb6a",
+    bg = "#fafafa",
+    fg = "#212121",
+    base_font = font_google("Inter"),
+    heading_font = font_google("Poppins", wght = c(500, 600, 700))
+  ),
   navset_card_underline(
-    title = "Subtimr \u2014 Substitution Tracker",
-
+    title = tags$span(
+      icon("stopwatch", class = "me-2"),
+      "Subtimr",
+      style = "font-weight: 600;"
+    ),
+    
     nav_panel(
       "Game",
       layout_columns(
         col_widths = c(4, 8),
+        
+        # Left sidebar - Clock and controls
         card(
-          card_header("Clock"),
-          div(
-            style = "text-align:center;",
-            h5(textOutput("half_label", inline = TRUE), class = "text-muted mb-0"),
-            h1(textOutput("clock_display", inline = TRUE), style = "font-size: 3.5rem; font-weight: 700;"),
-            div(textOutput("total_time_display", inline = TRUE), class = "text-muted")
+          class = "shadow-sm",
+          card_header(
+            class = "bg-primary text-white fw-semibold",
+            icon("clock", class = "me-2"), "Game Clock"
           ),
-          layout_columns(
-            col_widths = c(4, 4, 4),
-            actionButton("start_clock", "Start", class = "btn-success w-100"),
-            actionButton("pause_clock", "Pause", class = "btn-warning w-100"),
-            actionButton("reset_clock", "Reset", class = "btn-outline-danger w-100")
-          ),
-          uiOutput("end_half_ui"),
-          hr(),
-          actionButton("new_game", "New Game\u2026", class = "btn-outline-primary w-100"),
-          downloadButton("download_summary", "Download Time Summary (CSV)", class = "btn-outline-secondary w-100 mt-2"),
-          hr(),
-          uiOutput("add_to_game_ui")
-        ),
-        card(
-          card_header("Substitute"),
-          layout_columns(
-            col_widths = c(6, 6),
+          card_body(
             div(
-              h5("On field"),
-              uiOutput("on_field_table"),
-              uiOutput("sub_out_ui")
+              class = "text-center py-3",
+              tags$div(
+                class = "badge bg-secondary fs-6 mb-2",
+                textOutput("half_label", inline = TRUE)
+              ),
+              div(
+                textOutput("clock_display", inline = TRUE),
+                style = "font-size: 4rem; font-weight: 700; color: #2e7d32; line-height: 1; font-family: 'Courier New', monospace;"
+              ),
+              div(
+                class = "text-muted mt-2 fs-6",
+                icon("hourglass-half", class = "me-1"),
+                textOutput("total_time_display", inline = TRUE)
+              )
             ),
             div(
-              h5("Bench"),
-              uiOutput("bench_table"),
-              uiOutput("sub_in_ui")
+              class = "d-grid gap-2 mt-4",
+              div(
+                class = "btn-group",
+                actionButton("start_clock", 
+                             tags$span(icon("play"), " Start"),
+                             class = "btn-success"
+                ),
+                actionButton("pause_clock", 
+                             tags$span(icon("pause"), " Pause"),
+                             class = "btn-warning"
+                ),
+                actionButton("reset_clock", 
+                             tags$span(icon("rotate-left"), " Reset"),
+                             class = "btn-outline-danger"
+                )
+              )
+            ),
+            uiOutput("end_half_ui"),
+            
+            tags$hr(class = "my-3"),
+            # Score tracker
+            div(
+              class = "card bg-light",
+              div(
+                class = "card-body py-3",
+                tags$h6("Score", class = "text-center mb-3 fw-semibold"),
+                div(
+                  class = "d-flex justify-content-center align-items-center gap-3",
+                  div(
+                    class = "text-center",
+                    tags$label("Us", class = "small text-muted d-block mb-1"),
+                    div(
+                      style = "font-size: 2.5rem; font-weight: 700; color: #2e7d32;",
+                      textOutput("score_us", inline = TRUE)
+                    ),
+                    div(
+                      class = "btn-group btn-group-sm mt-2",
+                      actionButton("score_us_minus", icon("minus"), class = "btn-outline-secondary"),
+                      actionButton("score_us_plus", icon("plus"), class = "btn-outline-success")
+                    )
+                  ),
+                  tags$span("-", style = "font-size: 2rem; color: #999;"),
+                  div(
+                    class = "text-center",
+                    tags$label("Them", class = "small text-muted d-block mb-1"),
+                    div(
+                      style = "font-size: 2.5rem; font-weight: 700; color: #666;",
+                      textOutput("score_them", inline = TRUE)
+                    ),
+                    div(
+                      class = "btn-group btn-group-sm mt-2",
+                      actionButton("score_them_minus", icon("minus"), class = "btn-outline-secondary"),
+                      actionButton("score_them_plus", icon("plus"), class = "btn-outline-danger")
+                    )
+                  )
+                )
+              )
+            )
+            
+            
+          ),
+          card_footer(
+            class = "bg-light",
+            div(
+              class = "d-grid gap-2",
+              actionButton("new_game", 
+                           tags$span(icon("circle-plus"), " New Game"),
+                           class = "btn-primary"
+              ),
+              downloadButton("download_summary", 
+                             "Download Summary (CSV)",
+                             class = "btn-outline-secondary"
+              ),
+              tags$hr(class = "my-2"),
+              uiOutput("add_to_game_ui")
+            )
+          )
+        ),
+        
+        # Right panel - Substitution interface
+        card(
+          class = "shadow-sm",
+          card_header(
+            class = "bg-success text-white fw-semibold",
+            icon("people-arrows", class = "me-2"), "Substitutions"
+          ),
+          card_body(
+            layout_columns(
+              col_widths = c(6, 6),
+              
+              # On field column
+              div(
+                class = "border-end pe-3",
+                div(
+                  class = "d-flex align-items-center mb-3",
+                  icon("person-running", class = "text-success me-2", style = "font-size: 1.2rem;"),
+                  tags$h5(
+                    textOutput("on_field_header", inline = TRUE),
+                    class = "mb-0 fw-semibold"
+                  )
+                ),
+                div(
+                  class = "mb-3",
+                  style = "max-height: 400px; overflow-y: auto;",
+                  uiOutput("on_field_table")
+                ),
+                div(
+                  class = "card bg-light border-0",
+                  div(
+                    class = "card-body py-2",
+                    tags$small(class = "text-muted fw-semibold", "SUB OUT:"),
+                    uiOutput("sub_out_ui")
+                  )
+                )
+              ),
+              
+              # Bench column
+              div(
+                class = "ps-3",
+                div(
+                  class = "d-flex align-items-center mb-3",
+                  icon("chair", class = "text-secondary me-2", style = "font-size: 1.2rem;"),
+                  tags$h5(
+                    textOutput("bench_header", inline = TRUE),
+                    class = "mb-0 fw-semibold"
+                  )
+                ),
+                div(
+                  class = "mb-3",
+                  style = "max-height: 400px; overflow-y: auto;",
+                  uiOutput("bench_table")
+                ),
+                div(
+                  class = "card bg-light border-0",
+                  div(
+                    class = "card-body py-2",
+                    tags$small(class = "text-success fw-semibold", "SUB IN:"),
+                    uiOutput("sub_in_ui")
+                  )
+                )
+              )
             )
           ),
-          div(
-            class = "mt-2",
-            actionButton("do_sub", "Substitute", class = "btn-primary"),
-            textOutput("sub_validation", inline = TRUE)
+          card_footer(
+            class = "bg-light",
+            div(
+              class = "d-flex align-items-center gap-2",
+              actionButton("do_sub", 
+                           tags$span(icon("arrow-right-arrow-left"), " Make Substitution"),
+                           class = "btn-success btn-lg flex-grow-1"
+              )
+            ),
+            div(
+              class = "text-muted small mt-2",
+              textOutput("sub_validation", inline = TRUE)
+            )
           )
         )
       )
     ),
-
+    
     nav_panel(
       "Roster",
       card(
-        card_header("Manage roster"),
-        p("This roster is saved to disk and persists across games."),
-        layout_columns(
-          col_widths = c(3, 6, 3),
-          textInput("new_number", "Number", placeholder = "e.g. 7"),
-          textInput("new_name", "Name", placeholder = "e.g. Alex Kim"),
-          actionButton("add_player", "Add player", class = "btn-primary mt-4")
+        class = "shadow-sm",
+        card_header(
+          class = "bg-primary text-white fw-semibold",
+          icon("users", class = "me-2"), "Manage Roster"
         ),
-        tableOutput("roster_table"),
-        uiOutput("remove_player_ui"),
-        actionButton("remove_player", "Remove selected", class = "btn-outline-danger")
+        card_body(
+          div(
+            class = "alert alert-info mb-4",
+            icon("circle-info", class = "me-2"),
+            "This roster is saved to disk and persists across games."
+          ),
+          div(
+            class = "card bg-light mb-4",
+            div(
+              class = "card-body",
+              tags$h6("Add New Player", class = "mb-3 fw-semibold"),
+              layout_columns(
+                col_widths = c(2, 7, 3),
+                textInput("new_number", "Number", placeholder = "#"),
+                textInput("new_name", "Name", placeholder = "Name"),
+                div(
+                  style = "padding-top: 1.8rem;",
+                  actionButton("add_player", 
+                               tags$span(icon("user-plus"), " Add Player"),
+                               class = "btn-primary w-100"
+                  )
+                )
+              )
+            )
+          ),
+          tags$h6("Current Roster", class = "mb-3 fw-semibold"),
+          div(
+            style = "max-height: 500px; overflow-y: auto;",
+            tableOutput("roster_table")
+          ),
+          tags$hr(),
+          div(
+            class = "card bg-light border-danger",
+            div(
+              class = "card-body",
+              tags$h6("Remove Player", class = "mb-3 fw-semibold text-danger"),
+              layout_columns(
+                col_widths = c(9, 3),
+                uiOutput("remove_player_ui"),
+                div(
+                  style = "padding-top: 1.8rem;",
+                  actionButton("remove_player", 
+                               tags$span(icon("user-minus"), " Remove"),
+                               class = "btn-outline-danger w-100"
+                  )
+                )
+              )
+            )
+          )
+        )
       )
     )
   )
 )
 
 server <- function(input, output, session) {
-
-  # ---- Persisted state, loaded once when the app/session starts ----
+  
+  # ---- Persisted state ----
   game_state <- reactiveValues(
     players = local({ gs <- load_game_state(); gs$players }),
-    clock   = local({ gs <- load_game_state(); gs$clock })
+    clock   = local({ gs <- load_game_state(); gs$clock }),
+    score_us = local({ gs <- load_game_state(); if (is.null(gs$score_us)) 0 else gs$score_us }),
+    score_them = local({ gs <- load_game_state(); if (is.null(gs$score_them)) 0 else gs$score_them })
   )
   roster <- reactiveVal(load_roster())
-
+  
   current_half <- reactiveVal(local({ gs <- load_game_state(); gs$current_half }))
   completed_halves_seconds <- reactiveVal(local({ gs <- load_game_state(); gs$completed_halves_seconds }))
-
-  # ---- Momentary row highlighting after a substitution ----
+  
   highlight_ids <- reactiveVal(character(0))
   highlight_expire <- reactiveVal(NULL)
-
-  # Self-scheduling: reruns every 1.5s while there's an active highlight,
-  # clearing it once its expiry has passed, then goes dormant again.
+  
   observe({
     ids <- highlight_ids()
     if (length(ids) == 0) return(invisible())
@@ -103,17 +302,17 @@ server <- function(input, output, session) {
       highlight_ids(character(0))
     }
   })
-
+  
   persist <- function() {
     save_game_state(list(
       players = game_state$players, clock = game_state$clock,
-      current_half = current_half(), completed_halves_seconds = completed_halves_seconds()
+      current_half = current_half(), completed_halves_seconds = completed_halves_seconds(),
+      score_us = game_state$score_us, score_them = game_state$score_them
     ))
   }
-
-  # Ticks once a second purely to redraw displays; never mutates state.
+  
   tick <- reactiveTimer(1000)
-
+  
   # ---------------- Roster management ----------------
   observeEvent(input$add_player, {
     validate(need(nzchar(trimws(input$new_name)), "Enter a name"))
@@ -126,34 +325,36 @@ server <- function(input, output, session) {
     save_roster(r)
     updateTextInput(session, "new_number", value = "")
     updateTextInput(session, "new_name", value = "")
+    showNotification("Player added successfully!", type = "message", duration = 2)
   })
-
+  
   output$roster_table <- renderTable({
     r <- roster()
     if (nrow(r) == 0) return(data.frame(Number = character(0), Name = character(0)))
+    r <- r[order(r$name), , drop = FALSE]
     data.frame(Number = r$number, Name = r$name)
-  })
-
+  }, striped = TRUE, hover = TRUE, bordered = TRUE)
+  
   output$remove_player_ui <- renderUI({
     r <- roster()
-    if (nrow(r) == 0) return(NULL)
-    choices <- setNames(r$id, paste0(r$number, " \u2014 ", r$name))
+    if (nrow(r) == 0) return(p(class = "text-muted", "No players in roster"))
+    choices <- setNames(r$id, paste0("#", r$number, " — ", r$name))
     selectInput("remove_player_id", NULL, choices = choices)
   })
-
+  
   observeEvent(input$remove_player, {
     req(input$remove_player_id)
     r <- roster()
     r <- r[r$id != input$remove_player_id, , drop = FALSE]
     roster(r)
     save_roster(r)
+    showNotification("Player removed", type = "warning", duration = 2)
   })
-
+  
   # ---------------- New game setup ----------------
   observeEvent(input$new_game, {
     r <- roster()
-    validate_have_roster <- nrow(r) > 0
-    if (!validate_have_roster) {
+    if (nrow(r) == 0) {
       showModal(modalDialog("Add players to the roster first.", easyClose = TRUE))
       return()
     }
@@ -161,7 +362,7 @@ server <- function(input, output, session) {
       title = "Start a new game",
       checkboxGroupInput(
         "today_players", "Who's starting on the field? Everyone else on the roster starts on the bench.",
-        choices = setNames(r$id, paste0(r$number, " \u2014 ", r$name)),
+        choices = setNames(r$id, paste0("#", r$number, " — ", r$name)),
         selected = character(0)
       ),
       footer = tagList(
@@ -170,10 +371,10 @@ server <- function(input, output, session) {
       )
     ))
   })
-
+  
   observeEvent(input$confirm_new_game, {
     r <- roster()
-    starters <- input$today_players  # NULL is fine -- everyone starts on the bench
+    starters <- input$today_players
     game_state$players <- data.frame(
       id = r$id, number = r$number, name = r$name,
       on_field = r$id %in% starters,
@@ -183,29 +384,30 @@ server <- function(input, output, session) {
       stringsAsFactors = FALSE
     )
     game_state$clock <- empty_clock()
+    game_state$score_us <- 0
+    game_state$score_them <- 0
     current_half(1)
     completed_halves_seconds(0)
     persist()
     removeModal()
+    showNotification("New game started!", type = "message", duration = 2)
   })
-
-  # Bring in any roster player not yet part of today's game, as a bench
-  # substitute (e.g. someone who wasn't in the starting lineup).
+  
   output$add_to_game_ui <- renderUI({
     r <- roster()
     players <- game_state$players
     eligible <- r[!(r$id %in% players$id), , drop = FALSE]
     if (nrow(r) == 0) return(NULL)
-    if (nrow(eligible) == 0) return(p("All roster players are already in today's game."))
+    if (nrow(eligible) == 0) return(p(class = "text-muted small", "All roster players are in the game."))
     tagList(
       selectInput(
         "add_to_game_id", "Add a substitute to the bench",
-        choices = setNames(eligible$id, paste0(eligible$number, " \u2014 ", eligible$name))
+        choices = setNames(eligible$id, paste0("#", eligible$number, " — ", eligible$name))
       ),
       actionButton("add_to_game", "Add to bench", class = "btn-outline-primary w-100")
     )
   })
-
+  
   observeEvent(input$add_to_game, {
     req(input$add_to_game_id)
     r <- roster()
@@ -220,8 +422,9 @@ server <- function(input, output, session) {
     ))
     game_state$players <- p
     persist()
+    showNotification("Player added to bench", type = "message", duration = 2)
   })
-
+  
   # ---------------- Clock controls ----------------
   observeEvent(input$start_clock, {
     cl <- game_state$clock
@@ -232,7 +435,7 @@ server <- function(input, output, session) {
       persist()
     }
   })
-
+  
   observeEvent(input$pause_clock, {
     cl <- game_state$clock
     if (isTRUE(cl$running)) {
@@ -243,7 +446,7 @@ server <- function(input, output, session) {
       persist()
     }
   })
-
+  
   observeEvent(input$reset_clock, {
     showModal(modalDialog(
       title = "Reset game?",
@@ -254,7 +457,7 @@ server <- function(input, output, session) {
       )
     ))
   })
-
+  
   observeEvent(input$confirm_reset, {
     p <- game_state$players
     if (nrow(p) > 0) {
@@ -264,21 +467,23 @@ server <- function(input, output, session) {
     }
     game_state$players <- p
     game_state$clock <- empty_clock()
+    game_state$score_us <- 0
+    game_state$score_them <- 0
     current_half(1)
     completed_halves_seconds(0)
     persist()
     removeModal()
+    showNotification("Game reset", type = "warning", duration = 2)
   })
-
+  
   # ---- End of Half 1 -> Start of Half 2 ----
-  # Pauses the clock, rolls each player's current-half time into their
-  # running total, then resets the (half) clock to zero. Who's on
-  # field/bench carries over unchanged unless the coach subs before/after.
   output$end_half_ui <- renderUI({
     if (current_half() >= 2) return(NULL)
-    div(class = "mt-2", actionButton("end_half", "End Half 1, Start Half 2", class = "btn-outline-primary w-100"))
+    div(class = "mt-3", actionButton("end_half", 
+                                     tags$span(icon("forward"), " End Half 1, Start Half 2"),
+                                     class = "btn-outline-primary w-100"))
   })
-
+  
   observeEvent(input$end_half, {
     cl <- game_state$clock
     if (isTRUE(cl$running)) {
@@ -297,25 +502,24 @@ server <- function(input, output, session) {
     game_state$clock <- empty_clock()
     current_half(2)
     persist()
+    showNotification("Half 2 started!", type = "message", duration = 2)
   })
-
+  
   output$half_label <- renderText({
     sprintf("Half %d", current_half())
   })
-
+  
   output$clock_display <- renderText({
     tick()
     format_time(current_game_seconds(game_state$clock))
   })
-
+  
   output$total_time_display <- renderText({
     tick()
     sprintf("Total: %s", format_time(completed_halves_seconds() + current_game_seconds(game_state$clock)))
   })
-
-  # ---------------- Live tables (on field / bench) ----------------
-  # Built by hand (rather than renderTable) so that recently-subbed rows can
-  # be tagged with a Bootstrap contextual class for the momentary highlight.
+  
+  # ---------------- Live tables ----------------
   render_time_table <- function(df, highlight_ids) {
     if (nrow(df) == 0) return(p(class = "text-muted", "None"))
     tags$table(
@@ -331,7 +535,15 @@ server <- function(input, output, session) {
       )
     )
   }
-
+  
+  output$on_field_header <- renderText({
+    sprintf("On field (%d)", sum(game_state$players$on_field))
+  })
+  
+  output$bench_header <- renderText({
+    sprintf("Bench (%d)", sum(!game_state$players$on_field))
+  })
+  
   output$on_field_table <- renderUI({
     tick()
     p <- game_state$players
@@ -339,7 +551,6 @@ server <- function(input, output, session) {
     if (nrow(onf) == 0) return(render_time_table(onf, character(0)))
     half_secs <- player_seconds(onf, game_state$clock)
     total_secs <- player_total_seconds(onf, game_state$clock)
-    # Longest total time on field first, ties broken alphabetically by name.
     ord <- order(-total_secs, onf$name)
     df <- data.frame(
       id = onf$id, number = onf$number, name = onf$name,
@@ -348,7 +559,7 @@ server <- function(input, output, session) {
     )[ord, , drop = FALSE]
     render_time_table(df, highlight_ids())
   })
-
+  
   output$bench_table <- renderUI({
     tick()
     p <- game_state$players
@@ -364,74 +575,101 @@ server <- function(input, output, session) {
     )[ord, , drop = FALSE]
     render_time_table(df, highlight_ids())
   })
-
-  # Selection checkboxes only regenerate when on-field membership changes,
-  # not every second, so a coach's in-progress selection is never wiped
-  # out mid-tick.
+  
   output$sub_out_ui <- renderUI({
     players <- game_state$players
     onf <- players[players$on_field, , drop = FALSE]
-    if (nrow(onf) == 0) return(p("No one on the field yet."))
+    if (nrow(onf) == 0) return(p(class = "text-muted small", "No one on the field yet."))
     checkboxGroupInput(
-      "sub_out", "Select to sub OUT",
-      choices = setNames(onf$id, paste0(onf$number, " \u2014 ", onf$name))
+      "sub_out", NULL,
+      choices = setNames(onf$id, paste0("#", onf$number, " — ", onf$name))
     )
   })
-
+  
   output$sub_in_ui <- renderUI({
     players <- game_state$players
     b <- players[!players$on_field, , drop = FALSE]
-    if (nrow(b) == 0) return(p("No one on the bench."))
+    if (nrow(b) == 0) return(p(class = "text-muted small", "No one on the bench."))
     checkboxGroupInput(
-      "sub_in", "Select to sub IN",
-      choices = setNames(b$id, paste0(b$number, " \u2014 ", b$name))
+      "sub_in", NULL,
+      choices = setNames(b$id, paste0("#", b$number, " — ", b$name))
     )
   })
-
+  
   output$sub_validation <- renderText({
     n_out <- length(input$sub_out)
     n_in <- length(input$sub_in)
-    if (n_out == 0 && n_in == 0) "Select bench players to bring on (no need to sub anyone out first)." else ""
+    if (n_out == 0 && n_in == 0) "Select players to substitute" else ""
   })
-
+  
   observeEvent(input$do_sub, {
     n_out <- length(input$sub_out)
     n_in <- length(input$sub_in)
     validate(need(n_out > 0 || n_in > 0, "Select at least one player to move."))
-
+    
     p <- game_state$players
     now <- current_game_seconds(game_state$clock)
-
-    # OUT and IN are handled independently -- you don't need a matching
-    # count on each side, so this also covers picking the initial lineup
-    # (only IN selections, nobody to sub out yet).
+    
     out_idx <- p$id %in% input$sub_out
     p$seconds_played[out_idx] <- p$seconds_played[out_idx] + (now - p$entered_at[out_idx])
     p$on_field[out_idx] <- FALSE
     p$entered_at[out_idx] <- NA_real_
-
+    
     in_idx <- p$id %in% input$sub_in
     p$on_field[in_idx] <- TRUE
     p$entered_at[in_idx] <- now
-
+    
     game_state$players <- p
     persist()
-
-    # Confirmation: toast + momentary highlight on the affected rows.
+    
+    # Confirmation: toast + momentary highlight
     out_names <- p$name[out_idx]
     in_names <- p$name[in_idx]
     msg_parts <- c(
       if (length(in_names) > 0) sprintf("In: %s", paste(in_names, collapse = ", ")),
       if (length(out_names) > 0) sprintf("Out: %s", paste(out_names, collapse = ", "))
     )
-    showNotification(paste(msg_parts, collapse = " \u2014 "), type = "message", duration = 3)
+    showNotification(HTML(paste(msg_parts, collapse = "<br>")), type = "message", duration = 3)
     highlight_expire(Sys.time() + 1.5)
     highlight_ids(union(input$sub_out, input$sub_in))
-
+    
     updateCheckboxGroupInput(session, "sub_out", selected = character(0))
     updateCheckboxGroupInput(session, "sub_in", selected = character(0))
   })
-
+  
+  # ---------------- Score tracking ----------------
+  output$score_us <- renderText({
+    as.character(game_state$score_us)
+  })
+  
+  output$score_them <- renderText({
+    as.character(game_state$score_them)
+  })
+  
+  observeEvent(input$score_us_plus, {
+    game_state$score_us <- game_state$score_us + 1
+    persist()
+  })
+  
+  observeEvent(input$score_us_minus, {
+    if (game_state$score_us > 0) {
+      game_state$score_us <- game_state$score_us - 1
+      persist()
+    }
+  })
+  
+  observeEvent(input$score_them_plus, {
+    game_state$score_them <- game_state$score_them + 1
+    persist()
+  })
+  
+  observeEvent(input$score_them_minus, {
+    if (game_state$score_them > 0) {
+      game_state$score_them <- game_state$score_them - 1
+      persist()
+    }
+  })
+  
   # ---------------- Export ----------------
   output$download_summary <- downloadHandler(
     filename = function() sprintf("subtimr_%s.csv", format(Sys.time(), "%Y%m%d_%H%M")),
@@ -445,6 +683,7 @@ server <- function(input, output, session) {
         `Total Seconds` = round(total_secs), `Total Time` = format_time(total_secs),
         check.names = FALSE
       )
+      out <- out[order(out$Name), , drop = FALSE]
       utils::write.csv(out, file, row.names = FALSE)
     }
   )
