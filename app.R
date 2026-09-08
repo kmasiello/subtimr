@@ -1,7 +1,10 @@
 library(shiny)
 library(bslib)
+library(jsonlite)
+library(DBI)
 
 source("R/helpers.R")
+source("R/duckdb_helpers.R")
 
 ui <- page_fillable(
   title = "Subtimr",
@@ -331,47 +334,31 @@ ui <- page_fillable(
 )
 
 server <- function(input, output, session) {
+  # Load initial state once
+  initial_state <- load_game_state()
+  
   # ---- Persisted state ----
   game_state <- reactiveValues(
-    players = local({
-      gs <- load_game_state()
-      gs$players
-    }),
-    clock = local({
-      gs <- load_game_state()
-      gs$clock
-    }),
-    score_us = local({
-      gs <- load_game_state()
-      if (is.null(gs$score_us)) 0 else gs$score_us
-    }),
-    score_them = local({
-      gs <- load_game_state()
-      if (is.null(gs$score_them)) 0 else gs$score_them
-    }),
-    notes = local({
-      gs <- load_game_state()
-      if (is.null(gs$notes)) {
-        data.frame(
-          player_id = character(0),
-          note = character(0),
-          stringsAsFactors = FALSE
-        )
-      } else {
-        gs$notes
-      }
-    })
+    players = initial_state$players,
+    clock = initial_state$clock,
+    score_us = if (is.null(initial_state$score_us)) 0 else initial_state$score_us,
+    score_them = if (is.null(initial_state$score_them)) 0 else initial_state$score_them,
+    notes = if (is.null(initial_state$notes)) {
+      data.frame(
+        player_id = character(0),
+        note = character(0),
+        stringsAsFactors = FALSE
+      )
+    } else {
+      initial_state$notes
+    }
   )
+  
   roster <- reactiveVal(load_roster())
-
-  current_half <- reactiveVal(local({
-    gs <- load_game_state()
-    gs$current_half
-  }))
-  completed_halves_seconds <- reactiveVal(local({
-    gs <- load_game_state()
-    gs$completed_halves_seconds
-  }))
+  
+    current_half <- reactiveVal(initial_state$current_half)
+    completed_halves_seconds <- reactiveVal(initial_state$completed_halves_seconds)
+  
 
   highlight_ids <- reactiveVal(character(0))
   highlight_expire <- reactiveVal(NULL)
@@ -797,20 +784,37 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$do_sub, {
-    n_out <- length(input$sub_out)
-    n_in <- length(input$sub_in)
-    validate(need(n_out > 0 || n_in > 0, "Select at least one player to move."))
+        # Safely handle NULL inputs
+          sub_out <- input$sub_out
+          sub_in <- input$sub_in
+        
+            if (is.null(sub_out)) sub_out <- character(0)
+            if (is.null(sub_in)) sub_in <- character(0)
+            
+                n_out <- length(sub_out)
+                n_in <- length(sub_in)
+                
+                  # Don't use validate here - just return early if nothing selected
+                  if (n_out == 0 && n_in == 0) {
+                      showNotification(
+                          "Select at least one player to substitute",
+                          type = "warning",
+                          duration = 2
+                        )
+                      return()
+                    }
 
     p <- game_state$players
     now <- current_game_seconds(game_state$clock)
 
-    out_idx <- p$id %in% input$sub_out
+    out_idx <- p$id %in% sub_out
+    
     p$seconds_played[out_idx] <- p$seconds_played[out_idx] +
       (now - p$entered_at[out_idx])
     p$on_field[out_idx] <- FALSE
     p$entered_at[out_idx] <- NA_real_
 
-    in_idx <- p$id %in% input$sub_in
+    in_idx <- p$id %in% sub_in
     p$on_field[in_idx] <- TRUE
     p$entered_at[in_idx] <- now
 
@@ -833,7 +837,7 @@ server <- function(input, output, session) {
       duration = 3
     )
     highlight_expire(Sys.time() + 1.5)
-    highlight_ids(union(input$sub_out, input$sub_in))
+    highlight_ids(union(sub_out, sub_in))
 
     updateCheckboxGroupInput(session, "sub_out", selected = character(0))
     updateCheckboxGroupInput(session, "sub_in", selected = character(0))

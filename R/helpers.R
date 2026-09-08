@@ -24,14 +24,21 @@ empty_roster <- function() {
 }
 
 load_roster <- function() {
-  if (file.exists(roster_path)) {
-    utils::read.csv(roster_path, stringsAsFactors = FALSE, colClasses = "character")
-  } else {
-    empty_roster()
-  }
+  # Try cloud first, fallback to local
+  tryCatch({
+    load_roster_cloud()
+  }, error = function(e) {
+    if (file.exists(roster_path)) {
+      utils::read.csv(roster_path, stringsAsFactors = FALSE, colClasses = "character")
+    } else {
+      empty_roster()
+    }
+  })
 }
 
 save_roster <- function(roster) {
+  # Save to both cloud and local for redundancy
+  save_roster_cloud(roster)
   utils::write.csv(roster, roster_path, row.names = FALSE)
 }
 
@@ -83,14 +90,21 @@ migrate_game_state <- function(gs) {
 }
 
 load_game_state <- function() {
-  if (file.exists(game_state_path)) {
-    migrate_game_state(tryCatch(readRDS(game_state_path), error = function(e) empty_game_state()))
-  } else {
-    empty_game_state()
-  }
+  # Try cloud first, fallback to local
+  tryCatch({
+    load_game_state_cloud()
+  }, error = function(e) {
+    if (file.exists(game_state_path)) {
+      migrate_game_state(tryCatch(readRDS(game_state_path), error = function(e) empty_game_state()))
+    } else {
+      empty_game_state()
+    }
+  })
 }
 
 save_game_state <- function(state) {
+  # Save to both cloud and local for redundancy
+  save_game_state_cloud(state)
   saveRDS(state, game_state_path)
 }
 
