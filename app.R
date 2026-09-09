@@ -42,13 +42,13 @@ ui <- page_fillable(
           card_body(
             div(
               class = "text-center py-3",
+              uiOutput("clock_status_badge"),
               tags$div(
                 class = "badge bg-secondary fs-6 mb-2",
                 textOutput("half_label", inline = TRUE)
               ),
               div(
-                textOutput("clock_display", inline = TRUE),
-                style = "font-size: 4rem; font-weight: 700; color: #2e7d32; line-height: 1; font-family: 'Courier New', monospace;"
+                uiOutput("clock_display_styled")
               ),
               div(
                 class = "text-muted mt-2 fs-6",
@@ -288,11 +288,19 @@ ui <- page_fillable(
               class = "card-body",
               tags$h6("Add New Player", class = "mb-3 fw-semibold"),
               layout_columns(
-                col_widths = c(2, 7, 3),
+                col_widths = c(3, 6, 3),
                 textInput("new_number", "Number", placeholder = "#"),
                 textInput("new_name", "Name", placeholder = "Name"),
+                selectInput(
+                  "new_position",
+                  "Position",
+                  choices = c("Striker", "Center", "Defender"),
+                  selected = "Center"
+                )
+              ),
+              layout_columns(
+                col_widths = c(12),
                 div(
-                  style = "padding-top: 1.8rem;",
                   actionButton(
                     "add_player",
                     tags$span(icon("user-plus"), " Add Player"),
@@ -336,13 +344,21 @@ ui <- page_fillable(
 server <- function(input, output, session) {
   # Load initial state once
   initial_state <- load_game_state()
-  
+
   # ---- Persisted state ----
   game_state <- reactiveValues(
     players = initial_state$players,
     clock = initial_state$clock,
-    score_us = if (is.null(initial_state$score_us)) 0 else initial_state$score_us,
-    score_them = if (is.null(initial_state$score_them)) 0 else initial_state$score_them,
+    score_us = if (is.null(initial_state$score_us)) {
+      0
+    } else {
+      initial_state$score_us
+    },
+    score_them = if (is.null(initial_state$score_them)) {
+      0
+    } else {
+      initial_state$score_them
+    },
     notes = if (is.null(initial_state$notes)) {
       data.frame(
         player_id = character(0),
@@ -353,12 +369,13 @@ server <- function(input, output, session) {
       initial_state$notes
     }
   )
-  
+
   roster <- reactiveVal(load_roster())
-  
-    current_half <- reactiveVal(initial_state$current_half)
-    completed_halves_seconds <- reactiveVal(initial_state$completed_halves_seconds)
-  
+
+  current_half <- reactiveVal(initial_state$current_half)
+  completed_halves_seconds <- reactiveVal(
+    initial_state$completed_halves_seconds
+  )
 
   highlight_ids <- reactiveVal(character(0))
   highlight_expire <- reactiveVal(NULL)
@@ -393,7 +410,15 @@ server <- function(input, output, session) {
 
   # ---------------- Roster management ----------------
   observeEvent(input$add_player, {
-    validate(need(nzchar(trimws(input$new_name)), "Enter a name"))
+    if (!nzchar(trimws(input$new_name))) {
+      showNotification(
+        "Please enter a player name",
+        type = "warning",
+        duration = 2
+      )
+      return()
+    }
+
     r <- roster()
     r <- rbind(
       r,
@@ -401,6 +426,7 @@ server <- function(input, output, session) {
         id = new_id(),
         number = trimws(input$new_number),
         name = trimws(input$new_name),
+        position = input$new_position,
         stringsAsFactors = FALSE
       )
     )
@@ -419,10 +445,14 @@ server <- function(input, output, session) {
     {
       r <- roster()
       if (nrow(r) == 0) {
-        return(data.frame(Number = character(0), Name = character(0)))
+        return(data.frame(
+          Number = character(0),
+          Name = character(0),
+          Position = character(0)
+        ))
       }
       r <- r[order(r$name), , drop = FALSE]
-      data.frame(Number = r$number, Name = r$name)
+      data.frame(Number = r$number, Name = r$name, Position = r$position)
     },
     striped = TRUE,
     hover = TRUE,
@@ -457,14 +487,43 @@ server <- function(input, output, session) {
       ))
       return()
     }
+
+    # Organize roster by position, then alphabetically by name
+    positions <- c("Striker", "Center", "Defender")
+
+    checkbox_ui <- lapply(positions, function(pos) {
+      pos_players <- r[r$position == pos, , drop = FALSE]
+      if (nrow(pos_players) == 0) {
+        return(NULL)
+      }
+
+      # Sort alphabetically by name
+      pos_players <- pos_players[order(pos_players$name), , drop = FALSE]
+
+      tagList(
+        tags$div(
+          class = "fw-bold text-primary mt-3 mb-2",
+          style = "font-size: 1.1rem;",
+          pos
+        ),
+        checkboxGroupInput(
+          paste0("today_players_", tolower(pos)),
+          NULL,
+          choices = setNames(
+            pos_players$id,
+            paste0("#", pos_players$number, " — ", pos_players$name)
+          ),
+          selected = character(0)
+        )
+      )
+    })
     showModal(modalDialog(
       title = "Start a new game",
-      checkboxGroupInput(
-        "today_players",
-        "Who's starting on the field? Everyone else on the roster starts on the bench.",
-        choices = setNames(r$id, paste0("#", r$number, " — ", r$name)),
-        selected = character(0)
+
+      tags$p(
+        "Who's starting on the field? Everyone else on the roster starts on the bench."
       ),
+      tagList(checkbox_ui),
       footer = tagList(
         modalButton("Cancel"),
         actionButton("confirm_new_game", "Start game", class = "btn-primary")
@@ -474,11 +533,19 @@ server <- function(input, output, session) {
 
   observeEvent(input$confirm_new_game, {
     r <- roster()
-    starters <- input$today_players
+
+    # Collect starters from all position groups
+    starters <- c(
+      input$today_players_striker,
+      input$today_players_center,
+      input$today_players_defender
+    )
+
     game_state$players <- data.frame(
       id = r$id,
       number = r$number,
       name = r$name,
+      position = r$position,
       on_field = r$id %in% starters,
       seconds_played = 0,
       entered_at = ifelse(r$id %in% starters, 0, NA_real_),
@@ -516,10 +583,18 @@ server <- function(input, output, session) {
     tagList(
       selectInput(
         "add_to_game_id",
-        "Add a substitute to the bench",
+        "Add a player to the game",
         choices = setNames(
           eligible$id,
-          paste0("#", eligible$number, " — ", eligible$name)
+          paste0(
+            "#",
+            eligible$number,
+            " — ",
+            eligible$name,
+            " (",
+            eligible$position,
+            ")"
+          )
         )
       ),
       actionButton(
@@ -533,6 +608,13 @@ server <- function(input, output, session) {
   observeEvent(input$add_to_game, {
     req(input$add_to_game_id)
     r <- roster()
+    # Handle backwards compatibility for existing game_state
+    if (
+      nrow(game_state$players) > 0 && !"position" %in% names(game_state$players)
+    ) {
+      game_state$players$position <- "Center"
+    }
+
     sel <- r[r$id == input$add_to_game_id, , drop = FALSE]
     req(nrow(sel) == 1)
     p <- game_state$players
@@ -542,6 +624,7 @@ server <- function(input, output, session) {
         id = sel$id,
         number = sel$number,
         name = sel$name,
+        position = sel$position,
         on_field = FALSE,
         seconds_played = 0,
         entered_at = NA_real_,
@@ -647,9 +730,35 @@ server <- function(input, output, session) {
     sprintf("Half %d", current_half())
   })
 
-  output$clock_display <- renderText({
+  output$clock_status_badge <- renderUI({
     tick()
-    format_time(current_game_seconds(game_state$clock))
+    is_running <- isTRUE(game_state$clock$running)
+
+    div(
+      class = sprintf(
+        "badge fs-6 mb-2 %s",
+        if (is_running) "bg-success" else "bg-danger"
+      ),
+      if (is_running) {
+        tags$span(icon("circle"), " RUNNING")
+      } else {
+        tags$span(icon("circle-pause"), " PAUSED")
+      }
+    )
+  })
+
+  output$clock_display_styled <- renderUI({
+    tick()
+    is_running <- isTRUE(game_state$clock$running)
+    color <- if (is_running) "#2e7d32" else "#999999"
+
+    div(
+      format_time(current_game_seconds(game_state$clock)),
+      style = sprintf(
+        "font-size: 4rem; font-weight: 700; color: %s; line-height: 1; font-family: 'Courier New', monospace;",
+        color
+      )
+    )
   })
 
   output$total_time_display <- renderText({
@@ -757,11 +866,39 @@ server <- function(input, output, session) {
     if (nrow(onf) == 0) {
       return(p(class = "text-muted small", "No one on the field yet."))
     }
-    checkboxGroupInput(
-      "sub_out",
-      NULL,
-      choices = setNames(onf$id, paste0("#", onf$number, " — ", onf$name))
-    )
+
+    # Add position column if missing for backwards compatibility
+    if (!"position" %in% names(onf)) {
+      onf$position <- "Center"
+    }
+
+    # Group by position
+    positions <- c("Striker", "Center", "Defender")
+
+    ui_elements <- lapply(positions, function(pos) {
+      pos_players <- onf[onf$position == pos, , drop = FALSE]
+      if (nrow(pos_players) == 0) {
+        return(NULL)
+      }
+
+      tagList(
+        tags$div(class = "fw-bold small text-muted mt-2 mb-1", pos),
+        checkboxGroupInput(
+          paste0("sub_out_", tolower(pos)),
+          NULL,
+          choices = setNames(
+            pos_players$id,
+            paste0("#", pos_players$number, " — ", pos_players$name)
+          )
+        )
+      )
+    })
+
+    if (all(sapply(ui_elements, is.null))) {
+      return(p(class = "text-muted small", "No one on the field yet."))
+    }
+
+    tagList(ui_elements)
   })
 
   output$sub_in_ui <- renderUI({
@@ -770,11 +907,36 @@ server <- function(input, output, session) {
     if (nrow(b) == 0) {
       return(p(class = "text-muted small", "No one on the bench."))
     }
-    checkboxGroupInput(
-      "sub_in",
-      NULL,
-      choices = setNames(b$id, paste0("#", b$number, " — ", b$name))
-    )
+
+    # Add position column if missing for backwards compatibility
+    if (!"position" %in% names(b)) {
+      b$position <- "Center"
+    }
+
+    # Group by position
+    positions <- c("Striker", "Center", "Defender")
+    ui_elements <- lapply(positions, function(pos) {
+      pos_players <- b[b$position == pos, , drop = FALSE]
+      if (nrow(pos_players) == 0) {
+        return(NULL)
+      }
+      tagList(
+        tags$div(class = "fw-bold small text-success mt-2 mb-1", pos),
+        checkboxGroupInput(
+          paste0("sub_in_", tolower(pos)),
+          NULL,
+          choices = setNames(
+            pos_players$id,
+            paste0("#", pos_players$number, " — ", pos_players$name)
+          )
+        )
+      )
+    })
+    if (all(sapply(ui_elements, is.null))) {
+      return(p(class = "text-muted small", "No one on the bench."))
+    }
+
+    tagList(ui_elements)
   })
 
   output$sub_validation <- renderText({
@@ -784,33 +946,52 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$do_sub, {
-        # Safely handle NULL inputs
-          sub_out <- input$sub_out
-          sub_in <- input$sub_in
-        
-            if (is.null(sub_out)) sub_out <- character(0)
-            if (is.null(sub_in)) sub_in <- character(0)
-            
-                n_out <- length(sub_out)
-                n_in <- length(sub_in)
-                
-                  # Don't use validate here - just return early if nothing selected
-                  if (n_out == 0 && n_in == 0) {
-                      showNotification(
-                          "Select at least one player to substitute",
-                          type = "warning",
-                          duration = 2
-                        )
-                      return()
-                    }
+    # Safely handle NULL inputs
+
+    # Collect all sub_out selections from different positions
+    sub_out <- c(
+      input$sub_out_striker,
+      input$sub_out_center,
+      input$sub_out_defender
+    )
+    sub_out <- sub_out[!is.null(sub_out)]  # Remove NULLs
+
+    # Collect all sub_in selections from different positions
+    sub_in <- c(
+      input$sub_in_striker,
+      input$sub_in_center,
+      input$sub_in_defender
+    )
+    sub_in <- sub_in[!is.null(sub_in)]  # Remove NULLs
+    
+    n_out <- length(sub_out)
+    n_in <- length(sub_in)
+
+    # Don't use validate here - just return early if nothing selected
+    if (n_out == 0 && n_in == 0) {
+      showNotification(
+        "Select at least one player to substitute",
+        type = "warning",
+        duration = 2
+      )
+      return()
+    }
 
     p <- game_state$players
     now <- current_game_seconds(game_state$clock)
 
     out_idx <- p$id %in% sub_out
+
+
+   # Only process players who are actually on the field
+    if (any(out_idx)) {
+        valid_entered <- out_idx & !is.na(p$entered_at)
+        if (any(valid_entered)) {
+           p$seconds_played[valid_entered] <- p$seconds_played[valid_entered] +
+            (now - p$entered_at[valid_entered])
+         }
+      }
     
-    p$seconds_played[out_idx] <- p$seconds_played[out_idx] +
-      (now - p$entered_at[out_idx])
     p$on_field[out_idx] <- FALSE
     p$entered_at[out_idx] <- NA_real_
 
@@ -839,8 +1020,19 @@ server <- function(input, output, session) {
     highlight_expire(Sys.time() + 1.5)
     highlight_ids(union(sub_out, sub_in))
 
-    updateCheckboxGroupInput(session, "sub_out", selected = character(0))
-    updateCheckboxGroupInput(session, "sub_in", selected = character(0))
+    # Clear all position-based checkbox groups
+    for (pos in c("striker", "center", "defender")) {
+      updateCheckboxGroupInput(
+        session,
+        paste0("sub_out_", pos),
+        selected = character(0)
+      )
+      updateCheckboxGroupInput(
+        session,
+        paste0("sub_in_", pos),
+        selected = character(0)
+      )
+    }
   })
 
   # ---------------- Notes functionality ----------------
@@ -999,16 +1191,38 @@ server <- function(input, output, session) {
   # ---------------- Export ----------------
   output$download_summary <- downloadHandler(
     filename = function() {
-      sprintf("subtimr_%s.csv", format(Sys.time(), "%Y%m%d_%H%M"))
-    },
+       sprintf("subtimr_%s_%d-%d.csv", 
+               format(Sys.time(), "%Y%m%d_%H%M"),
+               game_state$score_us,
+               game_state$score_them)
+          },
     content = function(file) {
       p <- game_state$players
       notes <- game_state$notes
-      half_secs <- if (nrow(p) > 0) {
-        player_seconds(p, game_state$clock)
-      } else {
-        numeric(0)
-      }
+
+    # Calculate H1 time (from seconds_prior_halves if we're in H2, or current if in H1)
+    h1_secs <- if (nrow(p) > 0) {
+       if (current_half() == 1) {
+           # In H1, show current time
+             player_seconds(p, game_state$clock)
+         } else {
+             # In H2, show what was accumulated in H1
+              p$seconds_prior_halves
+           }
+     } else {
+         numeric(0)
+       }
+        # Calculate H2 time (current time if in H2, 0 if in H1)
+    h2_secs <- if (nrow(p) > 0) {
+       if (current_half() == 2) {
+           player_seconds(p, game_state$clock)
+         } else {
+             rep(0, nrow(p))
+           }
+     } else {
+         numeric(0)
+       }
+      
       total_secs <- if (nrow(p) > 0) {
         player_total_seconds(p, game_state$clock)
       } else {
@@ -1017,17 +1231,29 @@ server <- function(input, output, session) {
       out <- data.frame(
         Number = p$number,
         Name = p$name,
-        `Current Half Seconds` = round(half_secs),
-        `Current Half Time` = format_time(half_secs),
+        Position = p$position,
+        `H1 Seconds` = round(h1_secs),
+        `H1 Time` = format_time(h1_secs),
+        `H2 Seconds` = round(h2_secs),
+        `H2 Time` = format_time(h2_secs),
         `Total Seconds` = round(total_secs),
         `Total Time` = format_time(total_secs),
+        
+        
         check.names = FALSE
       )
 
       # Add notes column
-      out$id <- p$id  # Add player ID for merging
+      out$id <- p$id # Add player ID for merging
       if (nrow(notes) > 0) {
-        out <- merge(out, notes, by.x = "id", by.y = "player_id", all.x = TRUE, sort = FALSE)
+        out <- merge(
+          out,
+          notes,
+          by.x = "id",
+          by.y = "player_id",
+          all.x = TRUE,
+          sort = FALSE
+        )
         # Reorder columns and rename
         note_idx <- which(names(out) == "note")
         if (length(note_idx) > 0) {
@@ -1037,7 +1263,7 @@ server <- function(input, output, session) {
       } else {
         out$Notes <- ""
       }
-      out$id <- NULL  # Remove ID column before export
+      out$id <- NULL # Remove ID column before export
       utils::write.csv(out, file, row.names = FALSE)
     }
   )
