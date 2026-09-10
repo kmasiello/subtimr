@@ -114,7 +114,7 @@ migrate_game_state <- function(gs) {
     gs$players$seconds_prior_halves <- 0
   }
   if (!"position" %in% names(gs$players)) {
-    gs$players$position <- "Center"
+    gs$players$position <- rep("Center", nrow(gs$players))
   }
   gs
 }

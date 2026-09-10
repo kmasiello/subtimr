@@ -1046,43 +1046,70 @@
       "checksum": "287f39a69f95c05cf9f956b013bcaad8"
     },
     "app.R": {
-      "checksum": "66de866c410616b632d6f19f23aba366"
-    },
-    "CHANGES.md": {
-      "checksum": "68f8ed9b4c167ac01d67f35d70c8088f"
+      "checksum": "e6cf65aa26c4acbb4eebf8f1db127f40"
     },
     "data/game_state.rds": {
-      "checksum": "3f2412fa7b97ed6d2487a8baccc5e214"
+      "checksum": "2af0e8fb6a822170fe02f767c8be8a31"
     },
     "data/roster.csv": {
-      "checksum": "6bc641a56849e1fae2be7c63fd2a01b9"
+      "checksum": "9a4895c5887e3a8844e61a2e21837bfb"
     },
-    "DEPLOYMENT_GUIDE.md": {
+    "local/BEFORE_AFTER_EXAMPLES.html": {
+      "checksum": "623724ecda1045d75c4755c0b4e88e68"
+    },
+    "local/BEFORE_AFTER_EXAMPLES.md": {
+      "checksum": "313521b0955ea9fcf0639019a11c14e8"
+    },
+    "local/CHANGES_SUMMARY.md": {
+      "checksum": "2822c5ed7fd0b4ebf6b8c426c621709f"
+    },
+    "local/CHANGES.md": {
+      "checksum": "68f8ed9b4c167ac01d67f35d70c8088f"
+    },
+    "local/DEPLOYMENT_CHECKLIST.md": {
+      "checksum": "e6695ffb08a498bcf0e48b2d57ab9383"
+    },
+    "local/DEPLOYMENT_GUIDE.md": {
       "checksum": "a8b1033a09e2baf2d516c054db8978e4"
     },
-    "IMPLEMENTATION_CHECKLIST.md": {
+    "local/IMPLEMENTATION_CHECKLIST.md": {
       "checksum": "305c2e1204a4fc64fbadc6b8854d903d"
     },
-    "QUICK_START.md": {
+    "local/PERSISTENCE_FIX.md": {
+      "checksum": "403af53f31b1504140a94a14eb43cfd5"
+    },
+    "local/QUICK_START.md": {
       "checksum": "cbc7025db57f455fa1234898293b04c9"
     },
-    "R/duckdb_helpers.R": {
-      "checksum": "5f0795c24760dc47769ed43ce2bc4987"
+    "local/REFACTORING_NOTES.md": {
+      "checksum": "8810672e1b60665386e14937a193f588"
     },
-    "R/helpers.R": {
-      "checksum": "26b5d662dc3ac37570fb3e38e1e66602"
+    "local/REFACTORING_QUICK_REFERENCE.md": {
+      "checksum": "0d2c0de976576f8936a2fd8af53b77fc"
     },
-    "renv.lock.example": {
+    "local/renv.lock.example": {
       "checksum": "6f36d280e0e2f2a139a270540f098817"
     },
-    "REQUIREMENTS.txt": {
+    "local/REQUIREMENTS.txt": {
       "checksum": "b163a30ce141c375fd7302ab3c1557a2"
     },
-    "SETUP_DUCKDB_CLOUD.md": {
+    "local/SETUP_DUCKDB_CLOUD.md": {
       "checksum": "a38b65ececbbb954087a398e5b9a702a"
     },
-    "test_duckdb_setup.R": {
+    "local/STATE_PERSISTENCE_LIMITATIONS.md": {
+      "checksum": "f7fbb5cea03cd7edd8922349c367b45e"
+    },
+    "local/test_duckdb_setup.R": {
       "checksum": "8ab3e574052502a3c3a228e4a6a41f3e"
+    },
+    "local/test_motherduck_token.R": {
+      "checksum": "8884e9c8af35c5d680fdf66b0d8fc05e"
+    },
+    "R/duckdb_helpers.R": {
+      "checksum": "1cc0ab0cc3b82d433a372183896ab8fd"
+    },
+    "R/helpers.R": {
+      "checksum": "4c5d762642d10d8a60a24a83fb5713ed"
     }
   },
   "users": null

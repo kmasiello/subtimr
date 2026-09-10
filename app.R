@@ -1,6 +1,5 @@
 library(shiny)
 library(bslib)
-library(jsonlite)
 library(DBI)
 
 source("R/helpers.R")
@@ -814,9 +813,21 @@ server <- function(input, output, session) {
   })
 
   output$sub_validation <- renderText({
-    n_out <- length(input$sub_out)
-    n_in <- length(input$sub_in)
-    if (n_out == 0 && n_in == 0) "Select players to substitute" else ""
+    sub_out <- c(
+      input$sub_out_striker,
+      input$sub_out_center,
+      input$sub_out_defender
+    )
+    sub_out <- sub_out[!is.null(sub_out)]
+    
+    sub_in <- c(
+      input$sub_in_striker,
+      input$sub_in_center,
+      input$sub_in_defender
+    )
+    sub_in <- sub_in[!is.null(sub_in)]
+    
+    if (length(sub_out) == 0 && length(sub_in) == 0) "Select players to substitute" else ""
   })
 
   observeEvent(input$do_sub, {

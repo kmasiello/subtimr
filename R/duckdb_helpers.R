@@ -19,12 +19,12 @@ init_duckdb <- function() {
 
   # For local dev: use local DuckDB if no token
   if (token == "") {
-    conn <- dbConnect(duckdb::duckdb(), ":memory:")
+    conn <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
   } else {
     # Connect to MotherDuck with error handling
     conn <- tryCatch(
       {
-        conn <- dbConnect(
+        conn <- DBI::dbConnect(
           duckdb::duckdb(),
           sprintf("md:?motherduck_token=%s", token)
         )
@@ -37,7 +37,7 @@ init_duckdb <- function() {
           "MotherDuck connection failed, falling back to local: ",
           e$message
         )
-        dbConnect(duckdb::duckdb(), ":memory:")
+        DBI::dbConnect(duckdb::duckdb(), ":memory:")
       }
     )
   }
