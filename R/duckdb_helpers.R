@@ -22,7 +22,7 @@ init_duckdb <- function() {
     conn <- dbConnect(duckdb::duckdb(), ":memory:")
   } else {
     # Connect to MotherDuck with error handling
-    tryCatch(
+    conn <- tryCatch(
       {
         conn <- dbConnect(
           duckdb::duckdb(),

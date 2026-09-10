@@ -21,13 +21,14 @@ empty_roster <- function() {
     id = character(0),
     number = character(0),
     name = character(0),
+    position = character(0),
     stringsAsFactors = FALSE
   )
 }
 
 load_roster <- function() {
   # Try cloud first, fallback to local
-  tryCatch(
+  roster <- tryCatch(
     {
       load_roster_cloud()
     },
@@ -43,6 +44,13 @@ load_roster <- function() {
       }
     }
   )
+  
+  # Migrate missing position column for backwards compatibility
+  if (!"position" %in% names(roster)) {
+    roster$position <- "Center"
+  }
+  
+  roster
 }
 
 save_roster <- function(roster) {
@@ -60,6 +68,7 @@ empty_players <- function() {
     id = character(0),
     number = character(0),
     name = character(0),
+    position = character(0),
     on_field = logical(0),
     seconds_played = numeric(0),
     entered_at = numeric(0),
@@ -103,6 +112,9 @@ migrate_game_state <- function(gs) {
   }
   if (!"seconds_prior_halves" %in% names(gs$players)) {
     gs$players$seconds_prior_halves <- 0
+  }
+  if (!"position" %in% names(gs$players)) {
+    gs$players$position <- "Center"
   }
   gs
 }
