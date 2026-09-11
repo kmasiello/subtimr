@@ -14,7 +14,9 @@
 #   clock is running.
 
 roster_path <- file.path("data", "roster.csv")
+roster_sync_path <- file.path("data", "roster_sync.rds")
 game_state_path <- file.path("data", "game_state.rds")
+game_state_sync_path <- file.path("data", "game_state_sync.rds")
 
 empty_roster <- function() {
   data.frame(

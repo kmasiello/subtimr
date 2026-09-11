@@ -76,9 +76,21 @@ init_duckdb <- function() {
 }
 
 # Get or create a stable session ID for this app instance
+#
+# ⚠️ KNOWN LIMITATION -- intentional for now, not a bug:
+# This returns a single fixed ID, so EVERY browser/device that connects
+# to a deployed instance of this app reads and writes the *same* roster
+# and game state row in MotherDuck. There is no per-user or per-team
+# isolation: two different coaches/teams pointed at the same deployment
+# will see and overwrite each other's data (last write wins).
+#
+# This is acceptable ONLY for the single-team use case this app was
+# built for (one coach, multiple personal devices, one game at a time).
+# Do NOT deploy this app for multiple independent teams/users without
+# first changing this to a per-user or per-game key -- see
+# STATE_PERSISTENCE_LIMITATIONS.md for options (e.g. session$id,
+# an authenticated user id, or a URL-based game id).
 get_session_id <- function() {
-  # In a real deployment, this would be per-user or per-app-instance
-  # For now, use a fixed ID (all users share state within a deployed app)
   "subtimr_session"
 }
 
@@ -109,14 +121,20 @@ save_game_state_cloud <- function(state) {
         params = list(session_id, state_b64, now)
       )
 
-      # Mark cloud save as successful by updating local file timestamp
-      saveRDS(list(state = state, cloud_saved_at = now), game_state_path)
+      # Mark cloud save as successful. This is a separate sidecar file
+      # (not game_state_path itself) because save_game_state() always
+      # writes the raw, unwrapped state to game_state_path right after
+      # calling this function -- wrapping it here would just get
+      # overwritten and the marker lost.
+      saveRDS(list(cloud_saved_at = now), game_state_sync_path)
       invisible(TRUE)
     },
     error = function(e) {
       warning("Failed to save game state to cloud: ", e$message)
-      # Fallback: save locally with failure marker so we know not to trust cloud
-      saveRDS(list(state = state, cloud_saved_at = NA), game_state_path)
+      # Mark that the cloud write failed, so the next load knows to
+      # prefer the local copy over a possibly-stale cloud row. The
+      # local copy itself is written by save_game_state() regardless.
+      saveRDS(list(cloud_saved_at = NA), game_state_sync_path)
       invisible(FALSE)
     }
   )
@@ -140,28 +158,27 @@ load_game_state_cloud <- function() {
       if (nrow(result) == 0) {
         # No state in cloud; try local fallback (DIRECT, not through load_game_state())
         if (file.exists(game_state_path)) {
-          local_state <- tryCatch(
+          return(migrate_game_state(tryCatch(
             readRDS(game_state_path),
-            error = function(e) list(state = empty_game_state(), cloud_saved_at = NA)
-          )
-          return(migrate_game_state(local_state$state))
+            error = function(e) empty_game_state()
+          )))
         } else {
           return(empty_game_state())
         }
       }
 
-      # Check if cloud save was acknowledged locally
-      local_state <- NULL
-      if (file.exists(game_state_path)) {
-        local_state <- tryCatch(
-          readRDS(game_state_path),
-          error = function(e) list(state = empty_game_state(), cloud_saved_at = NA)
-        )
-      }
-      
-      # If last cloud save failed (cloud_saved_at is NA), prefer local state
-      if (!is.null(local_state) && is.na(local_state$cloud_saved_at)) {
-        return(migrate_game_state(local_state$state))
+      # If the last cloud save attempt failed, the sync marker records
+      # cloud_saved_at = NA -- in that case prefer the local copy rather
+      # than the (possibly stale) cloud row, since we know the cloud
+      # write was never acknowledged.
+      if (file.exists(game_state_sync_path)) {
+        sync_info <- tryCatch(readRDS(game_state_sync_path), error = function(e) NULL)
+        if (!is.null(sync_info) && is.na(sync_info$cloud_saved_at) && file.exists(game_state_path)) {
+          local_state <- tryCatch(readRDS(game_state_path), error = function(e) NULL)
+          if (!is.null(local_state)) {
+            return(migrate_game_state(local_state))
+          }
+        }
       }
 
       state_b64 <- result$game_state_json[1]
@@ -173,11 +190,10 @@ load_game_state_cloud <- function() {
       warning("Failed to load game state from cloud: ", e$message)
       # Fallback to local (DIRECT, not through load_game_state())
       if (file.exists(game_state_path)) {
-        local_state <- tryCatch(
+        migrate_game_state(tryCatch(
           readRDS(game_state_path),
-          error = function(e) list(state = empty_game_state(), cloud_saved_at = NA)
-        )
-        migrate_game_state(local_state$state)
+          error = function(e) empty_game_state()
+        ))
       } else {
         empty_game_state()
       }
@@ -211,14 +227,16 @@ save_roster_cloud <- function(roster) {
         params = list(session_id, roster_b64, now)
       )
 
-      # Mark cloud save as successful
-      attr(roster, "cloud_saved_at") <- now
+      # Mark cloud save as successful (sidecar file, since attributes
+      # on a data frame don't survive a write.csv/read.csv round trip)
+      saveRDS(list(cloud_saved_at = now), roster_sync_path)
       invisible(TRUE)
     },
     error = function(e) {
       warning("Failed to save roster to cloud: ", e$message)
-      # Fallback: save locally with failure marker
-      attr(roster, "cloud_saved_at") <- NA
+      # Fallback: mark that the cloud write failed, so the next load
+      # knows to prefer the local copy over a possibly-stale cloud row
+      saveRDS(list(cloud_saved_at = NA), roster_sync_path)
       invisible(FALSE)
     }
   )
@@ -252,27 +270,22 @@ load_roster_cloud <- function() {
         }
       }
 
-      # Check if we have a local copy with save status
-      local_roster <- NULL
-      if (file.exists(roster_path)) {
-        local_roster <- tryCatch(
-          utils::read.csv(
-            roster_path,
-            stringsAsFactors = FALSE,
-            colClasses = "character"
-          ),
-          error = function(e) NULL
-        )
-      }
-      
-      # If last cloud save failed (indicated by local file), prefer local
-      # This is a simple heuristic: if local file exists and is newer than cloud, use it
-      if (!is.null(local_roster)) {
-        local_mtime <- file.mtime(roster_path)
-        cloud_time <- result$updated_at[1]
-        # If local file is more recent, prefer it (cloud save may have failed)
-        if (!is.na(local_mtime) && !is.na(cloud_time)) {
-          if (local_mtime > as.POSIXct(cloud_time)) {
+      # If the last cloud save attempt failed, the sync marker records
+      # cloud_saved_at = NA -- in that case prefer the local copy rather
+      # than the (possibly stale) cloud row, since we know the cloud
+      # write was never acknowledged.
+      if (file.exists(roster_sync_path)) {
+        sync_info <- tryCatch(readRDS(roster_sync_path), error = function(e) NULL)
+        if (!is.null(sync_info) && is.na(sync_info$cloud_saved_at) && file.exists(roster_path)) {
+          local_roster <- tryCatch(
+            utils::read.csv(
+              roster_path,
+              stringsAsFactors = FALSE,
+              colClasses = "character"
+            ),
+            error = function(e) NULL
+          )
+          if (!is.null(local_roster)) {
             return(local_roster)
           }
         }

@@ -515,6 +515,17 @@ server <- function(input, output, session) {
 
     roster(r)
     save_roster(r)
+
+    # Keep the active game's copy of this player in sync, since
+    # game_state$players is a separate table joined by id.
+    gp_idx <- which(game_state$players$id == player_id)
+    if (length(gp_idx) == 1) {
+      game_state$players$number[gp_idx] <- r$number[player_idx]
+      game_state$players$name[gp_idx] <- r$name[player_idx]
+      game_state$players$position[gp_idx] <- r$position[player_idx]
+      persist()
+    }
+
     removeModal()
     showNotification("Player updated successfully!", type = "message", duration = 2)
   })
