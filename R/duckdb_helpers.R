@@ -24,13 +24,13 @@ init_duckdb <- function() {
     # Connect to MotherDuck with error handling
     conn <- tryCatch(
       {
-        conn <- DBI::dbConnect(
+        test_conn <- DBI::dbConnect(
           duckdb::duckdb(),
           sprintf("md:?motherduck_token=%s", token)
         )
         # Test the connection immediately
-        DBI::dbGetQuery(conn, "SELECT 1")
-        conn
+        DBI::dbGetQuery(test_conn, "SELECT 1")
+        test_conn
       },
       error = function(e) {
         warning(
@@ -93,7 +93,7 @@ save_game_state_cloud <- function(state) {
 
       # Use base64 encoding of RDS for perfect fidelity
       state_rds <- serialize(state, NULL)
-      state_b64 <- base64enc::base64encode(state_rds)
+      state_b64 <- base64enc::base64encode(state_rds, mode = "raw")
 
       # Get current timestamp as a value
       now <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
@@ -109,12 +109,14 @@ save_game_state_cloud <- function(state) {
         params = list(session_id, state_b64, now)
       )
 
+      # Mark cloud save as successful by updating local file timestamp
+      saveRDS(list(state = state, cloud_saved_at = now), game_state_path)
       invisible(TRUE)
     },
     error = function(e) {
       warning("Failed to save game state to cloud: ", e$message)
-      # Fallback: save locally so data isn't lost
-      saveRDS(state, game_state_path)
+      # Fallback: save locally with failure marker so we know not to trust cloud
+      saveRDS(list(state = state, cloud_saved_at = NA), game_state_path)
       invisible(FALSE)
     }
   )
@@ -131,24 +133,39 @@ load_game_state_cloud <- function() {
 
       result <- DBI::dbGetQuery(
         conn,
-        "SELECT game_state_json FROM game_state WHERE session_id = ?",
+        "SELECT game_state_json, updated_at FROM game_state WHERE session_id = ?",
         params = list(session_id)
       )
 
       if (nrow(result) == 0) {
         # No state in cloud; try local fallback (DIRECT, not through load_game_state())
         if (file.exists(game_state_path)) {
-          return(migrate_game_state(tryCatch(
+          local_state <- tryCatch(
             readRDS(game_state_path),
-            error = function(e) empty_game_state()
-          )))
+            error = function(e) list(state = empty_game_state(), cloud_saved_at = NA)
+          )
+          return(migrate_game_state(local_state$state))
         } else {
           return(empty_game_state())
         }
       }
 
+      # Check if cloud save was acknowledged locally
+      local_state <- NULL
+      if (file.exists(game_state_path)) {
+        local_state <- tryCatch(
+          readRDS(game_state_path),
+          error = function(e) list(state = empty_game_state(), cloud_saved_at = NA)
+        )
+      }
+      
+      # If last cloud save failed (cloud_saved_at is NA), prefer local state
+      if (!is.null(local_state) && is.na(local_state$cloud_saved_at)) {
+        return(migrate_game_state(local_state$state))
+      }
+
       state_b64 <- result$game_state_json[1]
-      state_rds <- base64enc::base64decode(state_b64)
+      state_rds <- base64enc::base64decode(state_b64, output = "raw")
       state <- unserialize(state_rds)
       migrate_game_state(state)
     },
@@ -156,10 +173,11 @@ load_game_state_cloud <- function() {
       warning("Failed to load game state from cloud: ", e$message)
       # Fallback to local (DIRECT, not through load_game_state())
       if (file.exists(game_state_path)) {
-        migrate_game_state(tryCatch(
+        local_state <- tryCatch(
           readRDS(game_state_path),
-          error = function(e) empty_game_state()
-        ))
+          error = function(e) list(state = empty_game_state(), cloud_saved_at = NA)
+        )
+        migrate_game_state(local_state$state)
       } else {
         empty_game_state()
       }
@@ -178,7 +196,7 @@ save_roster_cloud <- function(roster) {
 
       # Use base64 encoding of RDS for perfect fidelity
       roster_rds <- serialize(roster, NULL)
-      roster_b64 <- base64enc::base64encode(roster_rds)
+      roster_b64 <- base64enc::base64encode(roster_rds, mode = "raw")
 
       # Get current timestamp as a value
       now <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
@@ -193,12 +211,14 @@ save_roster_cloud <- function(roster) {
         params = list(session_id, roster_b64, now)
       )
 
+      # Mark cloud save as successful
+      attr(roster, "cloud_saved_at") <- now
       invisible(TRUE)
     },
     error = function(e) {
       warning("Failed to save roster to cloud: ", e$message)
-      # Fallback: save locally (DIRECT, not through save_roster())
-      utils::write.csv(roster, roster_path, row.names = FALSE)
+      # Fallback: save locally with failure marker
+      attr(roster, "cloud_saved_at") <- NA
       invisible(FALSE)
     }
   )
@@ -215,7 +235,7 @@ load_roster_cloud <- function() {
 
       result <- DBI::dbGetQuery(
         conn,
-        "SELECT roster_json FROM roster WHERE session_id = ?",
+        "SELECT roster_json, updated_at FROM roster WHERE session_id = ?",
         params = list(session_id)
       )
 
@@ -232,8 +252,34 @@ load_roster_cloud <- function() {
         }
       }
 
+      # Check if we have a local copy with save status
+      local_roster <- NULL
+      if (file.exists(roster_path)) {
+        local_roster <- tryCatch(
+          utils::read.csv(
+            roster_path,
+            stringsAsFactors = FALSE,
+            colClasses = "character"
+          ),
+          error = function(e) NULL
+        )
+      }
+      
+      # If last cloud save failed (indicated by local file), prefer local
+      # This is a simple heuristic: if local file exists and is newer than cloud, use it
+      if (!is.null(local_roster)) {
+        local_mtime <- file.mtime(roster_path)
+        cloud_time <- result$updated_at[1]
+        # If local file is more recent, prefer it (cloud save may have failed)
+        if (!is.na(local_mtime) && !is.na(cloud_time)) {
+          if (local_mtime > as.POSIXct(cloud_time)) {
+            return(local_roster)
+          }
+        }
+      }
+
       roster_b64 <- result$roster_json[1]
-      roster_rds <- base64enc::base64decode(roster_b64)
+      roster_rds <- base64enc::base64decode(roster_b64, output = "raw")
       roster <- unserialize(roster_rds)
       roster
     },

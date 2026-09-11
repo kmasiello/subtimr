@@ -47,7 +47,7 @@ load_roster <- function() {
   
   # Migrate missing position column for backwards compatibility
   if (!"position" %in% names(roster)) {
-    roster$position <- "Center"
+    roster$position <- rep("Center", nrow(roster))
   }
   
   roster
@@ -276,8 +276,8 @@ build_sub_ui <- function(players, on_field) {
   p <- players[players$on_field == on_field, , drop = FALSE]
   
   if (nrow(p) == 0) {
-    return(p(class = "text-muted small", 
-             if (on_field) "No one on the field yet." else "No one on the bench."))
+    return(tags$p(class = "text-muted small", 
+                  if (on_field) "No one on the field yet." else "No one on the bench."))
   }
   
   # Add position column for backwards compatibility
@@ -311,8 +311,8 @@ build_sub_ui <- function(players, on_field) {
   })
   
   if (all(sapply(ui_elements, is.null))) {
-    return(p(class = "text-muted small",
-             if (on_field) "No one on the field yet." else "No one on the bench."))
+    return(tags$p(class = "text-muted small",
+                  if (on_field) "No one on the field yet." else "No one on the bench."))
   }
   
   tagList(ui_elements)
