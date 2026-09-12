@@ -241,6 +241,8 @@ ui <- page_fillable(
               class = "text-muted small mt-2",
               textOutput("sub_validation", inline = TRUE)
             )
+          ),
+          div(
           )
         )
       )
