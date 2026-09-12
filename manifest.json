@@ -10,6 +10,44 @@
     "has_parameters": false
   },
   "packages": {
+    "DBI": {
+      "Source": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/latest",
+      "description": {
+        "Package": "DBI",
+        "Title": "R Database Interface",
+        "Version": "1.2.3",
+        "Date": "2024-06-02",
+        "Authors@R": "c(\n    person(\"R Special Interest Group on Databases (R-SIG-DB)\", role = \"aut\"),\n    person(\"Hadley\", \"Wickham\", role = \"aut\"),\n    person(\"Kirill\", \"Müller\", , \"kirill@cynkra.com\", role = c(\"aut\", \"cre\"),\n           comment = c(ORCID = \"0000-0002-1416-3412\")),\n    person(\"R Consortium\", role = \"fnd\")\n  )",
+        "Description": "A database interface definition for communication between R\n    and relational database management systems.  All classes in this\n    package are virtual and need to be extended by the various R/DBMS\n    implementations.",
+        "License": "LGPL (>= 2.1)",
+        "URL": "https://dbi.r-dbi.org, https://github.com/r-dbi/DBI",
+        "BugReports": "https://github.com/r-dbi/DBI/issues",
+        "Depends": "methods, R (>= 3.0.0)",
+        "Suggests": "arrow, blob, covr, DBItest, dbplyr, downlit, dplyr, glue,\nhms, knitr, magrittr, nanoarrow (>= 0.3.0.1), RMariaDB,\nrmarkdown, rprojroot, RSQLite (>= 1.1-2), testthat (>= 3.0.0),\nvctrs, xml2",
+        "VignetteBuilder": "knitr",
+        "Config/autostyle/scope": "line_breaks",
+        "Config/autostyle/strict": "false",
+        "Config/Needs/check": "r-dbi/DBItest",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.1",
+        "Config/Needs/website": "r-dbi/DBItest, r-dbi/dbitemplate, adbi,\nAzureKusto, bigrquery, DatabaseConnector, dittodb, duckdb,\nimplyr, lazysf, odbc, pool, RAthena, IMSMWU/RClickhouse, RH2,\nRJDBC, RMariaDB, RMySQL, RPostgres, RPostgreSQL, RPresto,\nRSQLite, sergeant, sparklyr, withr",
+        "Config/testthat/edition": "3",
+        "NeedsCompilation": "no",
+        "Packaged": "2024-06-02 20:26:05 UTC; kirill",
+        "Author": "R Special Interest Group on Databases (R-SIG-DB) [aut],\n  Hadley Wickham [aut],\n  Kirill Müller [aut, cre] (<https://orcid.org/0000-0002-1416-3412>),\n  R Consortium [fnd]",
+        "Maintainer": "Kirill Müller <kirill@cynkra.com>",
+        "Repository": "CRAN",
+        "Date/Publication": "2024-06-02 21:50:02 UTC",
+        "Built": "R 4.4.0; ; 2024-06-05 02:08:50 UTC; unix",
+        "RemoteType": "standard",
+        "RemotePkgRef": "DBI@1.2.3",
+        "RemoteRef": "DBI@1.2.3",
+        "RemoteRepos": "https://cloud.r-project.org",
+        "RemotePkgPlatform": "aarch64-apple-darwin20",
+        "RemoteSha": "1.2.3"
+      }
+    },
     "R6": {
       "Source": "CRAN",
       "Repository": "https://packagemanager.posit.co/cran/latest",
@@ -271,6 +309,38 @@
         "RemoteRepos": "https://packagemanager.posit.co/cran/latest",
         "RemotePkgPlatform": "aarch64-apple-darwin20",
         "RemoteSha": "0.6.37"
+      }
+    },
+    "duckdb": {
+      "Source": "CRAN",
+      "Repository": "https://packagemanager.posit.co/cran/latest",
+      "description": {
+        "Package": "duckdb",
+        "Title": "DBI Package for the DuckDB Database Management System",
+        "Version": "1.3.2",
+        "Authors@R": "c(\n    person(\"Hannes\", \"Mühleisen\", , \"hannes@cwi.nl\", role = \"aut\",\n           comment = c(ORCID = \"0000-0001-8552-0029\")),\n    person(\"Mark\", \"Raasveldt\", , \"mark.raasveldt@cwi.nl\", role = \"aut\",\n           comment = c(ORCID = \"0000-0001-5005-6844\")),\n    person(\"Kirill\", \"Müller\", , \"kirill@cynkra.com\", role = \"cre\",\n           comment = c(ORCID = \"0000-0002-1416-3412\")),\n    person(\"Stichting DuckDB Foundation\", role = \"cph\"),\n    person(\"Apache Software Foundation\", role = \"cph\"),\n    person(\"PostgreSQL Global Development Group\", role = \"cph\"),\n    person(\"The Regents of the University of California\", role = \"cph\"),\n    person(\"Cameron Desrochers\", role = \"cph\"),\n    person(\"Victor Zverovich\", role = \"cph\"),\n    person(\"RAD Game Tools\", role = \"cph\"),\n    person(\"Valve Software\", role = \"cph\"),\n    person(\"Rich Geldreich\", role = \"cph\"),\n    person(\"Tenacious Software LLC\", role = \"cph\"),\n    person(\"The RE2 Authors\", role = \"cph\"),\n    person(\"Google Inc.\", role = \"cph\"),\n    person(\"Facebook Inc.\", role = \"cph\"),\n    person(\"Steven G. Johnson\", role = \"cph\"),\n    person(\"Jiahao Chen\", role = \"cph\"),\n    person(\"Tony Kelman\", role = \"cph\"),\n    person(\"Jonas Fonseca\", role = \"cph\"),\n    person(\"Lukas Fittl\", role = \"cph\"),\n    person(\"Salvatore Sanfilippo\", role = \"cph\"),\n    person(\"Art.sy, Inc.\", role = \"cph\"),\n    person(\"Oran Agra\", role = \"cph\"),\n    person(\"Redis Labs, Inc.\", role = \"cph\"),\n    person(\"Melissa O'Neill\", role = \"cph\"),\n    person(\"PCG Project contributors\", role = \"cph\")\n  )",
+        "Description": "The DuckDB project is an embedded analytical data management\n    system with support for the Structured Query Language (SQL). This\n    package includes all of DuckDB and an R Database Interface (DBI)\n    connector.",
+        "License": "MIT + file LICENSE",
+        "URL": "https://r.duckdb.org/, https://github.com/duckdb/duckdb-r",
+        "BugReports": "https://github.com/duckdb/duckdb-r/issues",
+        "Depends": "DBI, R (>= 4.1.0)",
+        "Imports": "methods, utils",
+        "Suggests": "adbcdrivermanager, arrow (>= 13.0.0), bit64, callr, clock,\nDBItest, dbplyr, dplyr, rlang, testthat, tibble, vctrs, withr",
+        "Config/build/compilation-database": "false",
+        "Config/build/never-clean": "true",
+        "Config/comment/compilation-database": "Generate manually with\npkgload:::generate_db() for faster pkgload::load_all()",
+        "Config/gha/extra-packages": "arrow=?ignore-before-r=4.2.0",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.2.9000",
+        "SystemRequirements": "xz (for building from source)",
+        "Biarch": "true",
+        "NeedsCompilation": "yes",
+        "Packaged": "2025-07-09 14:25:12 UTC; kirill",
+        "Author": "Hannes Mühleisen [aut] (ORCID: <https://orcid.org/0000-0001-8552-0029>),\n  Mark Raasveldt [aut] (ORCID: <https://orcid.org/0000-0001-5005-6844>),\n  Kirill Müller [cre] (ORCID: <https://orcid.org/0000-0002-1416-3412>),\n  Stichting DuckDB Foundation [cph],\n  Apache Software Foundation [cph],\n  PostgreSQL Global Development Group [cph],\n  The Regents of the University of California [cph],\n  Cameron Desrochers [cph],\n  Victor Zverovich [cph],\n  RAD Game Tools [cph],\n  Valve Software [cph],\n  Rich Geldreich [cph],\n  Tenacious Software LLC [cph],\n  The RE2 Authors [cph],\n  Google Inc. [cph],\n  Facebook Inc. [cph],\n  Steven G. Johnson [cph],\n  Jiahao Chen [cph],\n  Tony Kelman [cph],\n  Jonas Fonseca [cph],\n  Lukas Fittl [cph],\n  Salvatore Sanfilippo [cph],\n  Art.sy, Inc. [cph],\n  Oran Agra [cph],\n  Redis Labs, Inc. [cph],\n  Melissa O'Neill [cph],\n  PCG Project contributors [cph]",
+        "Maintainer": "Kirill Müller <kirill@cynkra.com>",
+        "Repository": "RSPM",
+        "Date/Publication": "2025-07-09 17:50:02 UTC",
+        "Built": "R 4.4.0; x86_64-pc-linux-gnu; 2025-07-10 05:51:16 UTC; unix"
       }
     },
     "fastmap": {
@@ -969,17 +1039,77 @@
     }
   },
   "files": {
+    ".env.example": {
+      "checksum": "b48c5e5c8e870c774344713d4983c96c"
+    },
+    ".Renviron": {
+      "checksum": "287f39a69f95c05cf9f956b013bcaad8"
+    },
     "app.R": {
-      "checksum": "0bd962df1041f95c5d2e6ad2f2d7125d"
+      "checksum": "e6cf65aa26c4acbb4eebf8f1db127f40"
     },
     "data/game_state.rds": {
-      "checksum": "af29862a204e27f5c0302d2c98331db5"
+      "checksum": "2af0e8fb6a822170fe02f767c8be8a31"
     },
     "data/roster.csv": {
-      "checksum": "b9536c169a1f72eabc63dbed09353182"
+      "checksum": "9a4895c5887e3a8844e61a2e21837bfb"
+    },
+    "local/BEFORE_AFTER_EXAMPLES.html": {
+      "checksum": "623724ecda1045d75c4755c0b4e88e68"
+    },
+    "local/BEFORE_AFTER_EXAMPLES.md": {
+      "checksum": "313521b0955ea9fcf0639019a11c14e8"
+    },
+    "local/CHANGES_SUMMARY.md": {
+      "checksum": "2822c5ed7fd0b4ebf6b8c426c621709f"
+    },
+    "local/CHANGES.md": {
+      "checksum": "68f8ed9b4c167ac01d67f35d70c8088f"
+    },
+    "local/DEPLOYMENT_CHECKLIST.md": {
+      "checksum": "e6695ffb08a498bcf0e48b2d57ab9383"
+    },
+    "local/DEPLOYMENT_GUIDE.md": {
+      "checksum": "a8b1033a09e2baf2d516c054db8978e4"
+    },
+    "local/IMPLEMENTATION_CHECKLIST.md": {
+      "checksum": "305c2e1204a4fc64fbadc6b8854d903d"
+    },
+    "local/PERSISTENCE_FIX.md": {
+      "checksum": "403af53f31b1504140a94a14eb43cfd5"
+    },
+    "local/QUICK_START.md": {
+      "checksum": "cbc7025db57f455fa1234898293b04c9"
+    },
+    "local/REFACTORING_NOTES.md": {
+      "checksum": "8810672e1b60665386e14937a193f588"
+    },
+    "local/REFACTORING_QUICK_REFERENCE.md": {
+      "checksum": "0d2c0de976576f8936a2fd8af53b77fc"
+    },
+    "local/renv.lock.example": {
+      "checksum": "6f36d280e0e2f2a139a270540f098817"
+    },
+    "local/REQUIREMENTS.txt": {
+      "checksum": "b163a30ce141c375fd7302ab3c1557a2"
+    },
+    "local/SETUP_DUCKDB_CLOUD.md": {
+      "checksum": "a38b65ececbbb954087a398e5b9a702a"
+    },
+    "local/STATE_PERSISTENCE_LIMITATIONS.md": {
+      "checksum": "f7fbb5cea03cd7edd8922349c367b45e"
+    },
+    "local/test_duckdb_setup.R": {
+      "checksum": "8ab3e574052502a3c3a228e4a6a41f3e"
+    },
+    "local/test_motherduck_token.R": {
+      "checksum": "8884e9c8af35c5d680fdf66b0d8fc05e"
+    },
+    "R/duckdb_helpers.R": {
+      "checksum": "1cc0ab0cc3b82d433a372183896ab8fd"
     },
     "R/helpers.R": {
-      "checksum": "290cb8fdcafeeb715fa58b8c5b53fde2"
+      "checksum": "4c5d762642d10d8a60a24a83fb5713ed"
     }
   },
   "users": null
