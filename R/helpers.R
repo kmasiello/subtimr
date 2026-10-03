@@ -21,7 +21,6 @@ game_state_sync_path <- file.path("data", "game_state_sync.rds")
 empty_roster <- function() {
   data.frame(
     id = character(0),
-    number = character(0),
     name = character(0),
     position = character(0),
     stringsAsFactors = FALSE
@@ -51,7 +50,10 @@ load_roster <- function() {
   if (!"position" %in% names(roster)) {
     roster$position <- rep("Center", nrow(roster))
   }
-  
+
+  # Drop legacy number column so new rows bind cleanly
+  roster$number <- NULL
+
   roster
 }
 
@@ -68,7 +70,6 @@ new_id <- function() {
 empty_players <- function() {
   data.frame(
     id = character(0),
-    number = character(0),
     name = character(0),
     position = character(0),
     on_field = logical(0),
@@ -212,7 +213,7 @@ get_player_note <- function(player_id, notes_df) {
 # ---- UI building helpers ----
 # Render a player table for on-field or bench display
 # on_field: boolean, if TRUE show on-field players, if FALSE show bench
-render_player_table <- function(players, clock, on_field, highlight_ids) {
+render_player_table <- function(players, clock, on_field, highlight_ids, current_half = 1) {
   p <- players[players$on_field == on_field, , drop = FALSE]
   
   if (nrow(p) == 0) {
@@ -222,17 +223,21 @@ render_player_table <- function(players, clock, on_field, highlight_ids) {
   half_secs <- player_seconds(p, clock)
   total_secs <- player_total_seconds(p, clock)
   
-  # On field: sort by total time (descending), then name
+  # On field: sort by total time (descending) in half 1, by period time
+  # (descending) in later halves, then name
   # Bench: sort by name
   if (on_field) {
-    ord <- order(-total_secs, p$name)
+    if (current_half >= 2) {
+      ord <- order(-half_secs, p$name)
+    } else {
+      ord <- order(-total_secs, p$name)
+    }
   } else {
     ord <- order(p$name)
   }
   
   df <- data.frame(
     id = p$id,
-    number = p$number,
     name = p$name,
     half = format_time(half_secs),
     total = format_time(total_secs),
@@ -242,7 +247,6 @@ render_player_table <- function(players, clock, on_field, highlight_ids) {
   tags$table(
     class = "table table-sm table-hover mb-0",
     tags$thead(tags$tr(
-      tags$th("#"),
       tags$th("Name"),
       tags$th("Half"),
       tags$th("Total"),
@@ -252,7 +256,6 @@ render_player_table <- function(players, clock, on_field, highlight_ids) {
       lapply(seq_len(nrow(df)), function(i) {
         tags$tr(
           class = if (df$id[i] %in% highlight_ids) "table-success" else NULL,
-          tags$td(df$number[i]),
           tags$td(df$name[i]),
           tags$td(df$half[i]),
           tags$td(df$total[i]),
@@ -306,7 +309,7 @@ build_sub_ui <- function(players, on_field) {
         NULL,
         choices = setNames(
           pos_players$id,
-          paste0("#", pos_players$number, " — ", pos_players$name)
+          pos_players$name
         )
       )
     )

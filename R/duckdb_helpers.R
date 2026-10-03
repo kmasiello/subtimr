@@ -24,10 +24,11 @@ init_duckdb <- function() {
     # Connect to MotherDuck with error handling
     conn <- tryCatch(
       {
-        test_conn <- DBI::dbConnect(
-          duckdb::duckdb(),
-          sprintf("md:?motherduck_token=%s", token)
-        )
+        # Token comes from the MOTHERDUCK_TOKEN env var (already checked
+        # above). Passing it as a query param in the md: string makes
+        # duckdb treat the string as a file path if the motherduck
+        # extension isn't loaded ("File name too long").
+        test_conn <- DBI::dbConnect(duckdb::duckdb(), "md:")
         # Test the connection immediately
         DBI::dbGetQuery(test_conn, "SELECT 1")
         test_conn

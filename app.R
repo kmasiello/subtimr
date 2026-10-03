@@ -289,8 +289,7 @@ ui <- page_fillable(
               class = "card-body",
               tags$h6("Add New Player", class = "mb-3 fw-semibold"),
               layout_columns(
-                col_widths = c(3, 6, 3),
-                textInput("new_number", "Number", placeholder = "#"),
+                col_widths = c(6, 6),
                 textInput("new_name", "Name", placeholder = "Name"),
                 selectInput(
                   "new_position",
@@ -425,7 +424,6 @@ server <- function(input, output, session) {
       r,
       data.frame(
         id = new_id(),
-        number = trimws(input$new_number),
         name = trimws(input$new_name),
         position = input$new_position,
         stringsAsFactors = FALSE
@@ -433,7 +431,6 @@ server <- function(input, output, session) {
     )
     roster(r)
     save_roster(r)
-    updateTextInput(session, "new_number", value = "")
     updateTextInput(session, "new_name", value = "")
     showNotification("Player added successfully!", type = "message", duration = 2)
   })
@@ -442,10 +439,10 @@ server <- function(input, output, session) {
     {
       r <- roster()
       if (nrow(r) == 0) {
-        return(data.frame(Number = character(0), Name = character(0), Position = character(0)))
+        return(data.frame(Name = character(0), Position = character(0)))
       }
       r <- r[order(r$name), , drop = FALSE]
-      data.frame(Number = r$number, Name = r$name, Position = r$position)
+      data.frame(Name = r$name, Position = r$position)
     },
     striped = TRUE,
     hover = TRUE,
@@ -457,7 +454,7 @@ server <- function(input, output, session) {
     if (nrow(r) == 0) {
       return(p(class = "text-muted", "No players in roster"))
     }
-    choices <- setNames(r$id, paste0("#", r$number, " — ", r$name))
+    choices <- setNames(r$id, r$name)
     selectInput("edit_player_id", NULL, choices = choices)
   })
 
@@ -468,15 +465,9 @@ server <- function(input, output, session) {
     req(nrow(player) == 1)
 
     showModal(modalDialog(
-      title = sprintf("Edit Player #%s", player$number[1]),
+      title = sprintf("Edit %s", player$name[1]),
       layout_columns(
-        col_widths = c(3, 6, 3),
-        textInput(
-          "edit_number",
-          "Number",
-          value = player$number[1],
-          placeholder = "#"
-        ),
+        col_widths = c(6, 6),
         textInput(
           "edit_name",
           "Name",
@@ -511,7 +502,6 @@ server <- function(input, output, session) {
     player_idx <- which(r$id == player_id)
     req(length(player_idx) == 1)
 
-    r$number[player_idx] <- trimws(input$edit_number)
     r$name[player_idx] <- trimws(input$edit_name)
     r$position[player_idx] <- input$edit_position
 
@@ -522,7 +512,6 @@ server <- function(input, output, session) {
     # game_state$players is a separate table joined by id.
     gp_idx <- which(game_state$players$id == player_id)
     if (length(gp_idx) == 1) {
-      game_state$players$number[gp_idx] <- r$number[player_idx]
       game_state$players$name[gp_idx] <- r$name[player_idx]
       game_state$players$position[gp_idx] <- r$position[player_idx]
       persist()
@@ -537,7 +526,7 @@ server <- function(input, output, session) {
     if (nrow(r) == 0) {
       return(p(class = "text-muted", "No players in roster"))
     }
-    choices <- setNames(r$id, paste0("#", r$number, " — ", r$name))
+    choices <- setNames(r$id, r$name)
     selectInput("remove_player_id", NULL, choices = choices)
   })
 
@@ -574,7 +563,7 @@ server <- function(input, output, session) {
           NULL,
           choices = setNames(
             pos_players$id,
-            paste0("#", pos_players$number, " — ", pos_players$name)
+            pos_players$name
           ),
           selected = character(0)
         )
@@ -601,7 +590,6 @@ server <- function(input, output, session) {
 
     game_state$players <- data.frame(
       id = r$id,
-      number = r$number,
       name = r$name,
       position = r$position,
       on_field = r$id %in% starters,
@@ -641,7 +629,7 @@ server <- function(input, output, session) {
         "Add a player to the game",
         choices = setNames(
           eligible$id,
-          paste0("#", eligible$number, " — ", eligible$name, " (", eligible$position, ")")
+          paste0(eligible$name, " (", eligible$position, ")")
         )
       ),
       actionButton("add_to_game", "Add to bench", class = "btn-outline-primary w-100")
@@ -660,11 +648,12 @@ server <- function(input, output, session) {
       p$position <- "Center"
     }
 
+    p$number <- NULL
+
     p <- rbind(
       p,
       data.frame(
         id = sel$id,
-        number = sel$number,
         name = sel$name,
         position = sel$position,
         on_field = FALSE,
@@ -802,7 +791,8 @@ server <- function(input, output, session) {
       game_state$players,
       game_state$clock,
       on_field = TRUE,
-      highlight_ids()
+      highlight_ids(),
+      current_half()
     )
   })
 
@@ -922,11 +912,7 @@ server <- function(input, output, session) {
     current_note <- get_player_note(player_id, game_state$notes)
 
     showModal(modalDialog(
-      title = sprintf(
-        "Notes for #%s — %s",
-        player_info$number,
-        player_info$name
-      ),
+      title = sprintf("Notes for %s", player_info$name),
       textAreaInput(
         "note_text",
         NULL,
@@ -994,7 +980,7 @@ server <- function(input, output, session) {
               class = "d-flex justify-content-between align-items-start",
               tags$h6(
                 class = "mb-2",
-                sprintf("#%s — %s", player_notes$number[i], player_notes$name[i])
+                player_notes$name[i]
               ),
               actionButton(
                 paste0("edit_note_", player_notes$id[i]),
@@ -1089,7 +1075,6 @@ server <- function(input, output, session) {
       }
 
       out <- data.frame(
-        Number = p$number,
         Name = p$name,
         Position = p$position,
         `H1 Seconds` = round(h1_secs),
